@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <import type="com.bmdelacruz.vgp.ControllerActivity.State" />
+        <import type="android.view.View" />
+
+        <variable
+            name="vm"
+            type="com.bmdelacruz.vgp.ControllerActivity.VM" />
+        <variable
+            name="presenter"
+            type="com.bmdelacruz.vgp.ControllerActivity.Presenter" />
+    </data>
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".ControllerActivity">
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/guide_left"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.25" />
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/guide_right"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.75" />
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/guide_pad"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:orientation="horizontal"
+                app:layout_constraintGuide_percent="0.35" />
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/guide_thumb_stick"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:orientation="horizontal"
+                app:layout_constraintGuide_percent="0.75" />
+
+            <GridLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="3"
+                app:layout_constraintBottom_toBottomOf="@id/guide_pad"
+                app:layout_constraintEnd_toEndOf="@id/guide_left"
+                app:layout_constraintStart_toStartOf="@id/guide_left"
+                app:layout_constraintTop_toTopOf="@id/guide_pad">
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_trigger_left"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="0"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_dpad_up"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="1"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_trigger_left_2"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="2"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_dpad_left"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="1"
+                    android:layout_column="0"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_left" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_dpad_right"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="1"
+                    android:layout_column="2"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_right" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_dpad_down"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="2"
+                    android:layout_column="1"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_down" />
+
+            </GridLayout>
+
+            <GridLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="3"
+                app:layout_constraintBottom_toBottomOf="@id/guide_pad"
+                app:layout_constraintEnd_toEndOf="@id/guide_right"
+                app:layout_constraintStart_toStartOf="@id/guide_right"
+                app:layout_constraintTop_toTopOf="@id/guide_pad">
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_trigger_right"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="0"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_y"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="1"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_trigger_right_2"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="0"
+                    android:layout_column="2"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_up" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_x"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="1"
+                    android:layout_column="0"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_left" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_b"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="1"
+                    android:layout_column="2"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_right" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_a"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_row="2"
+                    android:layout_column="1"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_down" />
+
+            </GridLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="@id/guide_thumb_stick"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/guide_pad">
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_start"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_down" />
+
+                <com.bmdelacruz.vgp.Button
+                    android:id="@+id/btn_select"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dpad_down" />
+
+            </LinearLayout>
+
+            <com.bmdelacruz.vgp.ThumbStick
+                android:id="@+id/thumb_stick_left"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_dpad_up"
+                app:layout_constraintBottom_toBottomOf="@id/guide_thumb_stick"
+                app:layout_constraintEnd_toEndOf="@id/guide_left"
+                app:layout_constraintStart_toStartOf="@id/guide_left"
+                app:layout_constraintTop_toTopOf="@id/guide_thumb_stick" />
+
+            <com.bmdelacruz.vgp.ThumbStick
+                android:id="@+id/thumb_stick_right"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_dpad_up"
+                app:layout_constraintBottom_toBottomOf="@id/guide_thumb_stick"
+                app:layout_constraintEnd_toEndOf="@id/guide_right"
+                app:layout_constraintStart_toStartOf="@id/guide_right"
+                app:layout_constraintTop_toTopOf="@id/guide_thumb_stick" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="5dp"
+                android:gravity="center_horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <ProgressBar
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_margin="10dp"
+                    android:visibility="@{vm.state == State.Connecting ? View.VISIBLE : View.GONE}" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="@{vm.state == State.Connecting ? View.VISIBLE : View.GONE}"
+                    android:text="Connecting to 192.168.1.1:43842..." />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="@{vm.state == State.Connected ? View.VISIBLE : View.GONE}"
+                    android:text="Server address is 192.168.1.1:43842" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="@{vm.state == State.NotConnected ? View.VISIBLE : View.GONE}"
+                    android:text="Not connected" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="5dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_menu"
+                    android:onClick="@{(view) -> presenter.openControllerMenu()}"/>
+
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_menu"
+                    android:onClick="@{(view) -> presenter.connect()}"
+                    android:visibility="@{vm.state == State.NotConnected ? View.VISIBLE : View.GONE}" />
+
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_menu"
+                    android:onClick="@{(view) -> presenter.cancelConnect()}"
+                    android:visibility="@{vm.state == State.Connecting ? View.VISIBLE : View.GONE}" />
+
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_menu"
+                    android:onClick="@{(view) -> presenter.disconnect()}"
+                    android:visibility="@{vm.state == State.Connected ? View.VISIBLE : View.GONE}" />
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</layout>
