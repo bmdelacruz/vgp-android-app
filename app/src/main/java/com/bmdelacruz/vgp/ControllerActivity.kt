@@ -1,6 +1,8 @@
 package com.bmdelacruz.vgp
 
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.EditText
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -15,10 +17,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
 
 class ControllerActivity : AppCompatActivity() {
+    private val systemUiVisibilityControlChannel = Channel<Boolean>()
     private val connectChannel = Channel<String>()
     private val cancelConnectChannel = Channel<Unit>()
     private val disconnectChannel = Channel<Unit>()
@@ -60,22 +64,6 @@ class ControllerActivity : AppCompatActivity() {
                                 }
 
                                 dialog.dismiss()
-
-//                                if (URLUtil.isValidUrl(enteredTargetAddress)) {
-//                                    lifecycleScope.launchWhenResumed {
-//                                        connectChannel.send(enteredTargetAddress)
-//                                    }
-//
-//                                    dialog.dismiss()
-//                                } else {
-//                                    Toast
-//                                        .makeText(
-//                                            this@ControllerActivity,
-//                                            "Please enter a valid server address!",
-//                                            Toast.LENGTH_SHORT
-//                                        )
-//                                        .show()
-//                                }
                             }
                             .setNegativeButton("Cancel") { dialog, _ ->
                                 dialog.cancel()
@@ -97,6 +85,18 @@ class ControllerActivity : AppCompatActivity() {
                 override fun disconnect() {
                     lifecycleScope.launchWhenResumed {
                         disconnectChannel.send(Unit)
+                    }
+                }
+
+                override fun showSystemUi() {
+                    lifecycleScope.launchWhenResumed {
+                        systemUiVisibilityControlChannel.send(true)
+                    }
+                }
+
+                override fun hideSystemUi() {
+                    lifecycleScope.launchWhenResumed {
+                        systemUiVisibilityControlChannel.send(false)
                     }
                 }
             }
@@ -130,6 +130,30 @@ class ControllerActivity : AppCompatActivity() {
             withContext(Dispatchers.IO) {
                 controllerEventsFlow.collect {
                     inputChannel.send(it.toInput())
+                }
+            }
+        }
+
+        @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            window.decorView.setOnSystemUiVisibilityChangeListener {
+                vm.isSystemUiVisible.value = it and View.SYSTEM_UI_FLAG_FULLSCREEN == 0
+            }
+
+            lifecycleScope.launchWhenCreated {
+                systemUiVisibilityControlChannel.consumeEach { isVisible ->
+                    window.decorView.systemUiVisibility = if (!isVisible) {
+                        View.SYSTEM_UI_FLAG_IMMERSIVE or
+                                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                                View.SYSTEM_UI_FLAG_FULLSCREEN
+                    } else {
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    }
                 }
             }
         }
@@ -181,10 +205,6 @@ class ControllerActivity : AppCompatActivity() {
                                         .usePlaintext()
                                         .build()
 
-                                    awaitClose {
-                                        grpcChannel.shutdownNow()
-                                    }
-
                                     GamePadGrpc.newBlockingStub(grpcChannel)
                                         .withDeadline(Deadline.after(5, TimeUnit.SECONDS))
                                         .check(Gamepad.CheckRequest.getDefaultInstance())
@@ -192,7 +212,7 @@ class ControllerActivity : AppCompatActivity() {
                                     val inputStreamObserver = GamePadGrpc.newStub(grpcChannel)
                                         .instantiate(outputStreamObserver)
 
-                                    val inputCollectionJob = launch {
+                                    launch {
                                         inputChannel
                                             .receiveAsFlow()
                                             .onCompletion {
@@ -202,14 +222,15 @@ class ControllerActivity : AppCompatActivity() {
                                                 inputStreamObserver.onNext(input)
                                             }
                                     }
-
-                                    awaitClose {
-                                        inputCollectionJob.cancel()
+                                    launch {
+                                        outputChannel.consume { }
                                     }
 
                                     send(true)
 
-                                    outputChannel.consume { }
+                                    awaitClose {
+                                        grpcChannel.shutdownNow()
+                                    }
                                 }.retry(4).catch {
                                     android.util.Log.d(
                                         "ControllerActivity",
@@ -231,11 +252,24 @@ class ControllerActivity : AppCompatActivity() {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+
+        if (hasFocus && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            lifecycleScope.launchWhenResumed {
+                delay(300)
+                systemUiVisibilityControlChannel.send(false)
+            }
+        }
+    }
+
     interface Presenter {
         fun openControllerMenu()
         fun connect()
         fun cancelConnect()
         fun disconnect()
+        fun showSystemUi()
+        fun hideSystemUi()
     }
 
     enum class State {
@@ -247,5 +281,6 @@ class ControllerActivity : AppCompatActivity() {
     class VM(savedStateHandle: SavedStateHandle) : ViewModel() {
         val targetAddress = savedStateHandle.getLiveData<String>("targetAddress")
         val state = MutableLiveData(State.NotConnected)
+        val isSystemUiVisible = MutableLiveData(true)
     }
 }
