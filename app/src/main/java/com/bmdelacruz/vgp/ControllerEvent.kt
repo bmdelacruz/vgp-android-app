@@ -1,7 +1,5 @@
 package com.bmdelacruz.vgp
 
-import com.bmdelacruz.vgp.ComBmdelacruzVgp.Input
-
 sealed class ControllerEvent {
     class ButtonStateChanged(
         val type: ButtonType,
@@ -14,69 +12,71 @@ sealed class ControllerEvent {
 
     class ThumbStickPositionChanged(
         val type: ThumbStickType,
-        val axis: ThumbStickAxis,
-        val signedNormalizedPosition: Float,
+        val xSignedNormalizedPosition: Float,
+        val ySignedNormalizedPosition: Float,
     ) : ControllerEvent() {
         init {
-            if (signedNormalizedPosition < -1.0f || signedNormalizedPosition > 1.0f) {
+            if (
+                xSignedNormalizedPosition < -1.0f || xSignedNormalizedPosition > 1.0f ||
+                ySignedNormalizedPosition < -1.0f || ySignedNormalizedPosition > 1.0f
+            ) {
                 throw IllegalArgumentException("The position is incorrect! Must be [-1, 1].")
             }
         }
 
         override fun toString(): String {
-            return "ThumbStickPositionChanged(type=$type, axis=$axis, signedNormalizedPosition=$signedNormalizedPosition)"
+            return "ThumbStickPositionChanged(type=$type, xSignedNormalizedPosition=$xSignedNormalizedPosition, ySignedNormalizedPosition=$ySignedNormalizedPosition)"
         }
     }
 
-    fun toInput(): Input = when (this) {
-        is ButtonStateChanged -> Input.newBuilder()
+    fun toInput(): Gamepad.InputData = when (this) {
+        is ButtonStateChanged -> Gamepad.InputData.newBuilder()
             .setButton(
-                Input.Button.newBuilder()
-                    .setState(when (state) {
-                        ButtonState.Pressed -> Input.Button.State.PRESSED
-                        ButtonState.Released -> Input.Button.State.RELEASED
-                    })
-                    .setType(when (type) {
-                        ButtonType.DPadUp -> Input.Button.Type.UP
-                        ButtonType.DPadDown -> Input.Button.Type.DOWN
-                        ButtonType.DPadLeft -> Input.Button.Type.LEFT
-                        ButtonType.DPadRight -> Input.Button.Type.RIGHT
-                        ButtonType.X -> Input.Button.Type.X
-                        ButtonType.Y -> Input.Button.Type.Y
-                        ButtonType.A -> Input.Button.Type.A
-                        ButtonType.B -> Input.Button.Type.B
-                        ButtonType.ThumbL -> Input.Button.Type.THUMB_LEFT
-                        ButtonType.ThumbR -> Input.Button.Type.THUMB_RIGHT
-                        ButtonType.TriggerL -> Input.Button.Type.TRIGGER_LEFT
-                        ButtonType.TriggerR -> Input.Button.Type.TRIGGER_RIGHT
-                        ButtonType.TriggerL2 -> Input.Button.Type.TRIGGER_2_LEFT
-                        ButtonType.TriggerR2 -> Input.Button.Type.TRIGGER_2_RIGHT
-                        ButtonType.Start -> Input.Button.Type.START
-                        ButtonType.Select -> Input.Button.Type.SELECT
-                    })
+                Gamepad.Button.newBuilder()
+                    .setState(
+                        when (state) {
+                            ButtonState.Pressed -> Gamepad.ButtonState.PRESSED
+                            ButtonState.Released -> Gamepad.ButtonState.RELEASED
+                        }
+                    )
+                    .setType(
+                        when (type) {
+                            ButtonType.DPadUp -> Gamepad.ButtonType.UP
+                            ButtonType.DPadDown -> Gamepad.ButtonType.DOWN
+                            ButtonType.DPadLeft -> Gamepad.ButtonType.LEFT
+                            ButtonType.DPadRight -> Gamepad.ButtonType.RIGHT
+                            ButtonType.X -> Gamepad.ButtonType.X
+                            ButtonType.Y -> Gamepad.ButtonType.Y
+                            ButtonType.A -> Gamepad.ButtonType.A
+                            ButtonType.B -> Gamepad.ButtonType.B
+                            ButtonType.ThumbL -> Gamepad.ButtonType.THUMB_LEFT
+                            ButtonType.ThumbR -> Gamepad.ButtonType.THUMB_RIGHT
+                            ButtonType.TriggerL -> Gamepad.ButtonType.TRIGGER_LEFT
+                            ButtonType.TriggerR -> Gamepad.ButtonType.TRIGGER_RIGHT
+                            ButtonType.TriggerL2 -> Gamepad.ButtonType.TRIGGER_2_LEFT
+                            ButtonType.TriggerR2 -> Gamepad.ButtonType.TRIGGER_2_RIGHT
+                            ButtonType.Start -> Gamepad.ButtonType.START
+                            ButtonType.Select -> Gamepad.ButtonType.SELECT
+                        }
+                    )
             )
             .build()
-        is ThumbStickPositionChanged -> Input.newBuilder()
-            .setPosition(
-                Input.Position.newBuilder()
-                    .setType(when (type) {
-                        ThumbStickType.Left -> when (axis) {
-                            ThumbStickAxis.X -> Input.Position.Type.LEFT_X
-                            ThumbStickAxis.Y -> Input.Position.Type.LEFT_Y
+        is ThumbStickPositionChanged -> Gamepad.InputData.newBuilder()
+            .setThumbStick(
+                Gamepad.ThumbStick.newBuilder()
+                    .setType(
+                        when (type) {
+                            ThumbStickType.Left -> Gamepad.ThumbStickType.LEFT_THUMB_STICK
+                            ThumbStickType.Right -> Gamepad.ThumbStickType.RIGHT_THUMB_STICK
                         }
-                        ThumbStickType.Right -> when (axis) {
-                            ThumbStickAxis.X -> Input.Position.Type.RIGHT_X
-                            ThumbStickAxis.Y -> Input.Position.Type.RIGHT_Y
-                        }
-                    })
-                    .setPosition((ABS_MULTIPLIER * signedNormalizedPosition).toInt())
+                    )
+                    .setX(xSignedNormalizedPosition)
+                    .setY(ySignedNormalizedPosition)
             )
             .build()
     }
 
     companion object {
-        const val ABS_MULTIPLIER = 512
-
         fun ButtonState.makeEvent(type: ButtonType): ControllerEvent =
             ButtonStateChanged(type, this)
     }

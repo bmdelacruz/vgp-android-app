@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
 import com.bmdelacruz.vgp.ControllerEvent.Companion.makeEvent
 import com.bmdelacruz.vgp.databinding.ActivityFullscreenBinding
-import io.grpc.ConnectivityState
+import io.grpc.Deadline
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
@@ -16,13 +16,13 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.selects.select
+import java.util.concurrent.TimeUnit
 
 class ControllerActivity : AppCompatActivity() {
     private val connectChannel = Channel<String>()
     private val cancelConnectChannel = Channel<Unit>()
     private val disconnectChannel = Channel<Unit>()
-    private val inputChannel = Channel<ComBmdelacruzVgp.Input>()
+    private val inputChannel = Channel<Gamepad.InputData>()
 
     private val vm by viewModels<VM>()
 
@@ -154,14 +154,14 @@ class ControllerActivity : AppCompatActivity() {
                                 flowOf(false)
                             } else {
                                 callbackFlow {
-                                    val outputChannel = Channel<ComBmdelacruzVgp.Output>()
+                                    val outputChannel = Channel<Gamepad.OutputData>()
 
                                     val outputStreamObserverCoroutineContext =
                                         CoroutineScope(currentCoroutineContext())
 
                                     val outputStreamObserver =
-                                        object : StreamObserver<ComBmdelacruzVgp.Output> {
-                                            override fun onNext(value: ComBmdelacruzVgp.Output) {
+                                        object : StreamObserver<Gamepad.OutputData> {
+                                            override fun onNext(value: Gamepad.OutputData) {
                                                 outputStreamObserverCoroutineContext.launch {
                                                     outputChannel.send(value)
                                                 }
@@ -181,38 +181,36 @@ class ControllerActivity : AppCompatActivity() {
                                         .usePlaintext()
                                         .build()
 
-                                    val streamDeferred = async {
-                                        GamePadServiceGrpc.newStub(grpcChannel)
-                                            .instantiateGamePad(outputStreamObserver)
-                                    }
-
-                                    select<Unit> {
-                                        streamDeferred.onAwait { inputStreamObserver ->
-                                            launch {
-                                                inputChannel
-                                                    .receiveAsFlow()
-                                                    .onCompletion {
-                                                        inputStreamObserver.onCompleted()
-                                                    }
-                                                    .collect { input ->
-                                                        inputStreamObserver.onNext(input)
-                                                    }
-                                            }
-                                        }
-
-                                        onTimeout(10_000) {
-                                            throw Exception("Timeout")
-                                        }
-                                    }
-
-                                    send(true) // FIXME: goes here even if the connection hasn't been established
-
-                                    outputChannel.consume { }
-
                                     awaitClose {
                                         grpcChannel.shutdownNow()
                                     }
-                                }.catch {
+
+                                    GamePadGrpc.newBlockingStub(grpcChannel)
+                                        .withDeadline(Deadline.after(5, TimeUnit.SECONDS))
+                                        .check(Gamepad.CheckRequest.getDefaultInstance())
+
+                                    val inputStreamObserver = GamePadGrpc.newStub(grpcChannel)
+                                        .instantiate(outputStreamObserver)
+
+                                    val inputCollectionJob = launch {
+                                        inputChannel
+                                            .receiveAsFlow()
+                                            .onCompletion {
+                                                inputStreamObserver.onCompleted()
+                                            }
+                                            .collect { input ->
+                                                inputStreamObserver.onNext(input)
+                                            }
+                                    }
+
+                                    awaitClose {
+                                        inputCollectionJob.cancel()
+                                    }
+
+                                    send(true)
+
+                                    outputChannel.consume { }
+                                }.retry(4).catch {
                                     android.util.Log.d(
                                         "ControllerActivity",
                                         "connection error: $it",
