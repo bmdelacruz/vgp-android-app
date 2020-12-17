@@ -1,7 +1,12 @@
 package com.bmdelacruz.vgp
 
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.View
 import android.widget.EditText
 import androidx.activity.viewModels
@@ -10,128 +15,77 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
 import com.bmdelacruz.vgp.ControllerEvent.Companion.makeEvent
 import com.bmdelacruz.vgp.databinding.ActivityFullscreenBinding
+import com.google.android.material.snackbar.Snackbar
 import io.grpc.Deadline
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.channels.consume
-import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
 
 class ControllerActivity : AppCompatActivity() {
     private val systemUiVisibilityControlChannel = Channel<Boolean>()
-    private val connectChannel = Channel<String>()
-    private val cancelConnectChannel = Channel<Unit>()
-    private val disconnectChannel = Channel<Unit>()
-    private val inputChannel = Channel<Gamepad.InputData>()
+    private val waitChannel = Channel<Unit>()
 
     private val vm by viewModels<VM>()
 
-    private lateinit var controllerEventsFlow: Flow<ControllerEvent>
+    private val vibrator by lazy {
+        getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
+    private val vibrationEffect by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            VibrationEffect.createOneShot(VIBRATION_DURATION, VibrationEffect.DEFAULT_AMPLITUDE)
+        } else {
+            throw IllegalStateException()
+        }
+    }
+
+    private lateinit var soundPool: SoundPool
+
+    private var pressSoundId = -1
+    private var releaseSoundId = -1
+    private var pressStreamId = -1
+    private var releaseStreamId = -1
+    private var connectionJob: Job? = null
+    private var inputStreamObserver: StreamObserver<Gamepad.InputData>? = null
 
     @FlowPreview
     @ExperimentalCoroutinesApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val binding = ActivityFullscreenBinding.inflate(layoutInflater).apply {
-            this.vm = this@ControllerActivity.vm
+        ActivityFullscreenBinding.inflate(layoutInflater).apply {
             lifecycleOwner = this@ControllerActivity
-            presenter = object : Presenter {
-                override fun openControllerMenu() {
-                    // TODO
-                }
 
-                override fun connect() {
-                    val targetAddress = vm!!.targetAddress.value
-                    if (targetAddress.isNullOrBlank()) {
-                        val view =
-                            layoutInflater.inflate(R.layout.dialog_enter_target_address, null)
-                        val txtTargetAddress = view.findViewById<EditText>(R.id.txt_target_address)
-
-                        AlertDialog.Builder(this@ControllerActivity)
-                            .setView(view)
-                            .setTitle("Enter the server's address")
-                            .setMessage("You need to provide the address of the server you want to connect to.")
-                            .setPositiveButton("Enter") { dialog, _ ->
-                                val enteredTargetAddress = txtTargetAddress.text.toString()
-
-                                lifecycleScope.launchWhenResumed {
-                                    connectChannel.send(enteredTargetAddress)
-                                }
-
-                                dialog.dismiss()
-                            }
-                            .setNegativeButton("Cancel") { dialog, _ ->
-                                dialog.cancel()
-                            }
-                            .show()
-                    } else {
-                        lifecycleScope.launchWhenResumed {
-                            connectChannel.send(targetAddress)
-                        }
-                    }
-                }
-
-                override fun cancelConnect() {
-                    lifecycleScope.launchWhenResumed {
-                        cancelConnectChannel.send(Unit)
-                    }
-                }
-
-                override fun disconnect() {
-                    lifecycleScope.launchWhenResumed {
-                        disconnectChannel.send(Unit)
-                    }
-                }
-
-                override fun showSystemUi() {
-                    lifecycleScope.launchWhenResumed {
-                        systemUiVisibilityControlChannel.send(true)
-                    }
-                }
-
-                override fun hideSystemUi() {
-                    lifecycleScope.launchWhenResumed {
-                        systemUiVisibilityControlChannel.send(false)
-                    }
-                }
-            }
+            this.vm = this@ControllerActivity.vm
+            this.presenter = this@ControllerActivity.presenter
 
             setContentView(root)
-        }
 
-        controllerEventsFlow = merge(
-            binding.btnDpadUp.stateFlow.map { it.makeEvent(ButtonType.DPadUp) },
-            binding.btnDpadDown.stateFlow.map { it.makeEvent(ButtonType.DPadDown) },
-            binding.btnDpadLeft.stateFlow.map { it.makeEvent(ButtonType.DPadLeft) },
-            binding.btnDpadRight.stateFlow.map { it.makeEvent(ButtonType.DPadRight) },
-            binding.btnX.stateFlow.map { it.makeEvent(ButtonType.X) },
-            binding.btnY.stateFlow.map { it.makeEvent(ButtonType.Y) },
-            binding.btnA.stateFlow.map { it.makeEvent(ButtonType.A) },
-            binding.btnB.stateFlow.map { it.makeEvent(ButtonType.B) },
-            binding.btnTriggerLeft.stateFlow.map { it.makeEvent(ButtonType.TriggerL) },
-            binding.btnTriggerRight.stateFlow.map { it.makeEvent(ButtonType.TriggerR) },
-            binding.btnTriggerLeft2.stateFlow.map { it.makeEvent(ButtonType.TriggerL2) },
-            binding.btnTriggerRight2.stateFlow.map { it.makeEvent(ButtonType.TriggerR2) },
-            binding.btnStart.stateFlow.map { it.makeEvent(ButtonType.Start) },
-            binding.btnSelect.stateFlow.map { it.makeEvent(ButtonType.Select) },
-            binding.thumbStickLeft.stateFlow.map { it.makeEvent(ButtonType.ThumbL) },
-            binding.thumbStickRight.stateFlow.map { it.makeEvent(ButtonType.ThumbR) },
-            // TODO: thumb stick position
-        ).run {
-            shareIn(lifecycleScope, SharingStarted.Eagerly, 0)
-        }
-
-        lifecycleScope.launchWhenStarted {
-            withContext(Dispatchers.IO) {
-                controllerEventsFlow.collect {
-                    inputChannel.send(it.toInput())
-                }
-            }
+            btnDpadUp.onButtonStateChanged = createButtonStateChangedListener(ButtonType.DPadUp)
+            btnDpadDown.onButtonStateChanged = createButtonStateChangedListener(ButtonType.DPadDown)
+            btnDpadLeft.onButtonStateChanged = createButtonStateChangedListener(ButtonType.DPadLeft)
+            btnDpadRight.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.DPadRight)
+            btnX.onButtonStateChanged = createButtonStateChangedListener(ButtonType.X)
+            btnY.onButtonStateChanged = createButtonStateChangedListener(ButtonType.Y)
+            btnA.onButtonStateChanged = createButtonStateChangedListener(ButtonType.A)
+            btnB.onButtonStateChanged = createButtonStateChangedListener(ButtonType.B)
+            btnTriggerLeft.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.TriggerL)
+            btnTriggerRight.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.TriggerR)
+            btnTriggerLeft2.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.TriggerL2)
+            btnTriggerRight2.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.TriggerR2)
+            btnStart.onButtonStateChanged = createButtonStateChangedListener(ButtonType.Start)
+            btnSelect.onButtonStateChanged = createButtonStateChangedListener(ButtonType.Select)
+            thumbStickLeft.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.ThumbL)
+            thumbStickRight.onButtonStateChanged =
+                createButtonStateChangedListener(ButtonType.ThumbR)
         }
 
         @Suppress("DEPRECATION")
@@ -156,100 +110,26 @@ class ControllerActivity : AppCompatActivity() {
                     }
                 }
             }
+        } else {
+            TODO()
         }
 
-        lifecycleScope.launchWhenCreated {
-            connectChannel
-                .consumeAsFlow()
-                .flatMapLatest { targetAddress ->
-                    val stopFlow = disconnectChannel
-                        .receiveAsFlow()
-                        .map { true }
-                        .onStart { emit(false) }
+        soundPool = SoundPool.Builder()
+            .setMaxStreams(10)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+    }
 
-                    cancelConnectChannel
-                        .receiveAsFlow()
-                        .map { true }
-                        .onStart { emit(false) }
-                        .combine(stopFlow) { c, s -> c || s }
-                        .distinctUntilChanged()
-                        .flatMapLatest {
-                            if (it) {
-                                flowOf(false)
-                            } else {
-                                callbackFlow {
-                                    val outputChannel = Channel<Gamepad.OutputData>()
+    override fun onPostCreate(savedInstanceState: Bundle?) {
+        super.onPostCreate(savedInstanceState)
 
-                                    val outputStreamObserverCoroutineContext =
-                                        CoroutineScope(currentCoroutineContext())
-
-                                    val outputStreamObserver =
-                                        object : StreamObserver<Gamepad.OutputData> {
-                                            override fun onNext(value: Gamepad.OutputData) {
-                                                outputStreamObserverCoroutineContext.launch {
-                                                    outputChannel.send(value)
-                                                }
-                                            }
-
-                                            override fun onError(t: Throwable?) {
-                                                outputChannel.close(t)
-                                            }
-
-                                            override fun onCompleted() {
-                                                outputChannel.close()
-                                            }
-                                        }
-
-                                    val grpcChannel = ManagedChannelBuilder
-                                        .forAddress(targetAddress, 50000)
-                                        .usePlaintext()
-                                        .build()
-
-                                    GamePadGrpc.newBlockingStub(grpcChannel)
-                                        .withDeadline(Deadline.after(5, TimeUnit.SECONDS))
-                                        .check(Gamepad.CheckRequest.getDefaultInstance())
-
-                                    val inputStreamObserver = GamePadGrpc.newStub(grpcChannel)
-                                        .instantiate(outputStreamObserver)
-
-                                    launch {
-                                        inputChannel
-                                            .receiveAsFlow()
-                                            .onCompletion {
-                                                inputStreamObserver.onCompleted()
-                                            }
-                                            .collect { input ->
-                                                inputStreamObserver.onNext(input)
-                                            }
-                                    }
-                                    launch {
-                                        outputChannel.consume { }
-                                    }
-
-                                    send(true)
-
-                                    awaitClose {
-                                        grpcChannel.shutdownNow()
-                                    }
-                                }.retry(4).catch {
-                                    android.util.Log.d(
-                                        "ControllerActivity",
-                                        "connection error: $it",
-                                        it
-                                    )
-                                }
-                            }
-                        }
-                        .takeWhile { it }
-                        .map { State.Connected }
-                        .onStart { emit(State.Connecting) }
-                        .onCompletion { emit(State.NotConnected) }
-                }
-                .flowOn(Dispatchers.IO)
-                .collect {
-                    vm.state.value = it
-                }
-        }
+        pressSoundId = soundPool.load(this, R.raw.press, 1)
+        releaseSoundId = soundPool.load(this, R.raw.release, 1)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -261,6 +141,179 @@ class ControllerActivity : AppCompatActivity() {
                 systemUiVisibilityControlChannel.send(false)
             }
         }
+    }
+
+    private fun createButtonStateChangedListener(buttonType: ButtonType): (ButtonState) -> Unit {
+        return {
+            android.util.Log.d("ControllerActivity", "ctrlr evt: $it")
+
+            when (it) {
+                ButtonState.Pressed -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(vibrationEffect)
+                    } else {
+                        @kotlin.Suppress("DEPRECATION")
+                        vibrator.vibrate(VIBRATION_DURATION)
+                    }
+
+                    if (pressStreamId > 1) {
+                        soundPool.stop(pressStreamId)
+                    }
+                    pressStreamId = soundPool.play(
+                        pressSoundId,
+                        BUTTON_SOUNDS_VOLUME,
+                        BUTTON_SOUNDS_VOLUME,
+                        1,
+                        0,
+                        1.0f
+                    )
+                }
+                ButtonState.Released -> {
+                    if (releaseStreamId > 1) {
+                        soundPool.stop(releaseStreamId)
+                    }
+                    releaseStreamId = soundPool.play(
+                        releaseSoundId,
+                        BUTTON_SOUNDS_VOLUME,
+                        BUTTON_SOUNDS_VOLUME,
+                        1,
+                        0,
+                        1.0f
+                    )
+                }
+            }
+
+            lifecycleScope.launchWhenStarted {
+                withContext(Dispatchers.IO) {
+                    inputStreamObserver?.onNext(it.makeEvent(buttonType).toInput())
+                }
+            }
+        }
+    }
+
+    private fun connectToServer(targetAddress: String) {
+        connectionJob = lifecycleScope.launchWhenCreated {
+            vm.state.value = State.Connecting
+
+            val grpcChannel = ManagedChannelBuilder
+                .forTarget(targetAddress)
+                .usePlaintext()
+                .build()
+
+            try {
+                withTimeout(10_000) {
+                    withContext(Dispatchers.IO) {
+                        GamePadGrpc.newBlockingStub(grpcChannel)
+                            .withDeadline(Deadline.after(5, TimeUnit.SECONDS))
+                            .check(Gamepad.CheckRequest.getDefaultInstance())
+
+                        inputStreamObserver = GamePadGrpc.newStub(grpcChannel)
+                            .instantiate(outputStreamObserver)
+                    }
+                }
+
+                vm.state.value = State.Connected
+
+                waitChannel.receive()
+            } catch (_: CancellationException) {
+            } catch (_: Exception) {
+                Snackbar.make(
+                    window.decorView,
+                    "Failed to connect to $targetAddress",
+                    Snackbar.LENGTH_INDEFINITE
+                )
+                    .setAction("Retry") {
+                        connectToServer(targetAddress)
+                    }
+                    .setAction("Dismiss") { }
+                    .show()
+            } finally {
+                withContext(NonCancellable) {
+                    vm.state.value = State.NotConnected
+
+                    connectionJob = null
+                    inputStreamObserver = null
+
+                    grpcChannel.shutdown()
+                }
+            }
+        }
+    }
+
+    private val outputStreamObserver = object : StreamObserver<Gamepad.OutputData> {
+        override fun onNext(value: Gamepad.OutputData?) {
+        }
+
+        override fun onError(t: Throwable?) {
+            waitChannel.sendBlocking(Unit)
+        }
+
+        override fun onCompleted() {
+            waitChannel.sendBlocking(Unit)
+        }
+    }
+
+    private val presenter = object : Presenter {
+        override fun openControllerMenu() {
+            // TODO
+        }
+
+        override fun connect() {
+            val targetAddress = vm.targetAddress.value
+            if (targetAddress.isNullOrBlank()) {
+                val view =
+                    layoutInflater.inflate(R.layout.dialog_enter_target_address, null)
+                val txtTargetAddress = view.findViewById<EditText>(R.id.txt_target_address)
+
+                AlertDialog.Builder(this@ControllerActivity)
+                    .setView(view)
+                    .setTitle("Enter the server's address")
+                    .setMessage("You need to provide the address of the server you want to connect to.")
+                    .setPositiveButton("Enter") { dialog, _ ->
+                        val enteredTargetAddress = txtTargetAddress.text.toString()
+
+                        vm.targetAddress.value = enteredTargetAddress
+
+                        connectToServer(enteredTargetAddress)
+
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                        dialog.cancel()
+                    }
+                    .show()
+            } else {
+                lifecycleScope.launchWhenResumed {
+                    connectToServer(targetAddress)
+                }
+            }
+        }
+
+        override fun cancelConnect() {
+            connectionJob?.cancel()
+        }
+
+        override fun disconnect() {
+            inputStreamObserver?.onCompleted()
+            waitChannel.sendBlocking(Unit)
+        }
+
+        override fun showSystemUi() {
+            lifecycleScope.launchWhenResumed {
+                systemUiVisibilityControlChannel.send(true)
+            }
+        }
+
+        override fun hideSystemUi() {
+            lifecycleScope.launchWhenResumed {
+                systemUiVisibilityControlChannel.send(false)
+            }
+        }
+    }
+
+    companion object {
+        private const val VIBRATION_DURATION = 35L
+        private const val BUTTON_SOUNDS_VOLUME = 0.08f
     }
 
     interface Presenter {
