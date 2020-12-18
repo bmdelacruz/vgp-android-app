@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">Virtual Game Pad</string>
+    <string name="lbl_not_connected">Not connected</string>
+    <string name="lbl_connected">Connected</string>
+    <string name="lbl_connecting">Connecting…</string>
+    <string name="lbl_server_address_not_set">Server address not yet set!</string>
+    <string name="lbl_disconnect">Disconnect</string>
+    <string name="lbl_cancel_connect">Cancel connect</string>
+    <string name="lbl_connect">Connect</string>
+    <string name="lbl_menu">Menu</string>
+    <string name="lbl_hide_system_ui">Hide system UI</string>
+    <string name="lbl_show_system_ui">Show system UI</string>
 </resources>
