@@ -13,10 +13,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VirtualGamePad">
         <activity
+            android:name=".SettingsActivity"
+            android:label="@string/activity_settings" />
+        <activity
             android:name=".ControllerActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:screenOrientation="userLandscape"
             android:label="@string/app_name"
+            android:screenOrientation="userLandscape"
             android:theme="@style/Theme.VirtualGamePad.Controller">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -1,6 +1,7 @@
 package com.bmdelacruz.vgp
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.os.Build
@@ -8,11 +9,11 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.View
-import android.widget.EditText
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
+import androidx.preference.PreferenceManager
 import com.bmdelacruz.vgp.ControllerEvent.Companion.makeEvent
 import com.bmdelacruz.vgp.databinding.ActivityFullscreenBinding
 import com.google.android.material.snackbar.Snackbar
@@ -34,15 +35,21 @@ class ControllerActivity : AppCompatActivity() {
     private val vibrator by lazy {
         getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
-    private val vibrationEffect by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            VibrationEffect.createOneShot(VIBRATION_DURATION, VibrationEffect.DEFAULT_AMPLITUDE)
-        } else {
-            throw IllegalStateException()
-        }
-    }
 
     private lateinit var soundPool: SoundPool
+
+    private var isSoundFeedbackEnabled = true
+    private var soundFeedbackVolume = 0f
+    private var isHapticFeedbackEnabled = true
+    private var hapticFeedbackVibrationStrength = 0
+    private var hapticFeedbackVibrationDuration = 0
+
+    private var maxSoundFeedbackVolume = 0
+    private var defaultIsSoundFeedbackEnabled = true
+    private var defaultSoundFeedbackVolume = 0
+    private var defaultIsHapticFeedbackEnabled = true
+    private var defaultHapticFeedbackVibrationStrength = 0
+    private var defaultHapticFeedbackVibrationDuration = 0
 
     private var pressSoundId = -1
     private var releaseSoundId = -1
@@ -124,6 +131,18 @@ class ControllerActivity : AppCompatActivity() {
                     .build()
             )
             .build()
+
+        defaultIsSoundFeedbackEnabled =
+            resources.getBoolean(R.bool.pref_default_enable_sound_feedback)
+        defaultSoundFeedbackVolume =
+            resources.getInteger(R.integer.pref_default_sound_feedback_volume)
+        maxSoundFeedbackVolume = resources.getInteger(R.integer.pref_max_sound_feedback_volume)
+        defaultIsHapticFeedbackEnabled =
+            resources.getBoolean(R.bool.pref_default_enable_haptic_feedback)
+        defaultHapticFeedbackVibrationDuration =
+            resources.getInteger(R.integer.pref_default_haptic_feedback_vibration_strength)
+        defaultHapticFeedbackVibrationStrength =
+            resources.getInteger(R.integer.pref_default_haptic_feedback_vibration_duration)
     }
 
     override fun onPostCreate(savedInstanceState: Bundle?) {
@@ -131,6 +150,42 @@ class ControllerActivity : AppCompatActivity() {
 
         pressSoundId = soundPool.load(this, R.raw.press, 1)
         releaseSoundId = soundPool.load(this, R.raw.release, 1)
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        val prefMan = PreferenceManager.getDefaultSharedPreferences(this)
+
+        vm.targetAddress.value = prefMan.getString(
+            getString(R.string.pref_key_server_address),
+            ""
+        )
+
+        isSoundFeedbackEnabled = prefMan.getBoolean(
+            getString(R.string.pref_key_enable_sound_feedback),
+            defaultIsSoundFeedbackEnabled
+        )
+
+        soundFeedbackVolume = prefMan.getInt(
+            getString(R.string.pref_key_sound_feedback_volume),
+            defaultSoundFeedbackVolume
+        ) / maxSoundFeedbackVolume.toFloat()
+
+        isHapticFeedbackEnabled = prefMan.getBoolean(
+            getString(R.string.pref_key_enable_haptic_feedback),
+            defaultIsHapticFeedbackEnabled
+        )
+
+        hapticFeedbackVibrationStrength = prefMan.getInt(
+            getString(R.string.pref_key_haptic_feedback_vibration_strength),
+            defaultHapticFeedbackVibrationStrength
+        )
+
+        hapticFeedbackVibrationDuration = prefMan.getInt(
+            getString(R.string.pref_key_haptic_feedback_vibration_duration),
+            defaultHapticFeedbackVibrationDuration
+        )
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -146,37 +201,43 @@ class ControllerActivity : AppCompatActivity() {
 
     private fun createButtonStateChangedListener(buttonType: ButtonType): (ButtonState) -> Unit {
         return {
-            android.util.Log.d("ControllerActivity", "ctrlr evt: $it")
-
             when (it) {
                 ButtonState.Pressed -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        vibrator.vibrate(vibrationEffect)
-                    } else {
-                        @kotlin.Suppress("DEPRECATION")
-                        vibrator.vibrate(VIBRATION_DURATION)
+                    if (isHapticFeedbackEnabled) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val vibrationEffect = VibrationEffect.createOneShot(
+                                hapticFeedbackVibrationDuration.toLong(),
+                                hapticFeedbackVibrationStrength
+                            )
+                            vibrator.vibrate(vibrationEffect)
+                        } else {
+                            @kotlin.Suppress("DEPRECATION")
+                            vibrator.vibrate(hapticFeedbackVibrationDuration.toLong())
+                        }
                     }
 
-                    if (pressStreamId > 1) {
-                        soundPool.stop(pressStreamId)
+                    if (isSoundFeedbackEnabled) {
+                        if (pressStreamId > 1) {
+                            soundPool.stop(pressStreamId)
+                        }
+                        pressStreamId = soundPool.play(
+                            pressSoundId,
+                            soundFeedbackVolume,
+                            soundFeedbackVolume,
+                            1,
+                            0,
+                            1.0f
+                        )
                     }
-                    pressStreamId = soundPool.play(
-                        pressSoundId,
-                        BUTTON_SOUNDS_VOLUME,
-                        BUTTON_SOUNDS_VOLUME,
-                        1,
-                        0,
-                        1.0f
-                    )
                 }
-                ButtonState.Released -> {
+                ButtonState.Released -> if (isSoundFeedbackEnabled) {
                     if (releaseStreamId > 1) {
                         soundPool.stop(releaseStreamId)
                     }
                     releaseStreamId = soundPool.play(
                         releaseSoundId,
-                        BUTTON_SOUNDS_VOLUME,
-                        BUTTON_SOUNDS_VOLUME,
+                        soundFeedbackVolume,
+                        soundFeedbackVolume,
                         1,
                         0,
                         1.0f
@@ -218,15 +279,13 @@ class ControllerActivity : AppCompatActivity() {
                 waitChannel.receive()
             } catch (_: CancellationException) {
             } catch (_: Exception) {
-                Snackbar.make(
-                    window.decorView,
-                    "Failed to connect to $targetAddress",
-                    Snackbar.LENGTH_INDEFINITE
-                )
-                    .setAction("Retry") {
-                        connectToServer(targetAddress)
-                    }
-                    .setAction("Dismiss") { }
+                Snackbar
+                    .make(
+                        window.decorView,
+                        getString(R.string.snackbar_message_failed_to_connect, targetAddress),
+                        Snackbar.LENGTH_LONG
+                    )
+                    .setAction(R.string.retry) { connectToServer(targetAddress) }
                     .show()
             } finally {
                 withContext(NonCancellable) {
@@ -287,30 +346,21 @@ class ControllerActivity : AppCompatActivity() {
 
     private val presenter = object : Presenter {
         override fun openControllerMenu() {
-            // TODO
+            MenuDialog().show(supportFragmentManager, null)
         }
 
         override fun connect() {
             val targetAddress = vm.targetAddress.value
             if (targetAddress.isNullOrBlank()) {
-                val view =
-                    layoutInflater.inflate(R.layout.dialog_enter_target_address, null)
-                val txtTargetAddress = view.findViewById<EditText>(R.id.txt_target_address)
-
                 AlertDialog.Builder(this@ControllerActivity)
-                    .setView(view)
-                    .setTitle("Enter the server's address")
-                    .setMessage("You need to provide the address of the server you want to connect to.")
-                    .setPositiveButton("Enter") { dialog, _ ->
-                        val enteredTargetAddress = txtTargetAddress.text.toString()
-
-                        vm.targetAddress.value = enteredTargetAddress
-
-                        connectToServer(enteredTargetAddress)
+                    .setTitle(R.string.dialog_title_server_address_not_set)
+                    .setMessage(R.string.dialog_message_server_address_not_set)
+                    .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                        startActivity(Intent(this@ControllerActivity, SettingsActivity::class.java))
 
                         dialog.dismiss()
                     }
-                    .setNegativeButton("Cancel") { dialog, _ ->
+                    .setNegativeButton(android.R.string.cancel) { dialog, _ ->
                         dialog.cancel()
                     }
                     .show()
@@ -343,11 +393,6 @@ class ControllerActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        private const val VIBRATION_DURATION = 35L
-        private const val BUTTON_SOUNDS_VOLUME = 0.08f
-    }
-
     interface Presenter {
         fun openControllerMenu()
         fun connect()
@@ -363,8 +408,8 @@ class ControllerActivity : AppCompatActivity() {
         Connected,
     }
 
-    class VM(savedStateHandle: SavedStateHandle) : ViewModel() {
-        val targetAddress = savedStateHandle.getLiveData<String>("targetAddress")
+    class VM : ViewModel() {
+        val targetAddress = MutableLiveData("")
         val state = MutableLiveData(State.NotConnected)
         val isSystemUiVisible = MutableLiveData(true)
     }
