@@ -18,19 +18,13 @@ sealed class ForceFeedback {
         @Suppress("unused") val strongMagnitude: Int,
         @Suppress("unused") val weakMagnitude: Int,
     ) : ForceFeedback() {
-        private val vibrationEffect by lazy {
+        override fun performVibration(vibrator: Vibrator) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                VibrationEffect.createOneShot(
+                val vibrationEffect = VibrationEffect.createOneShot(
                     replayLength.toLong(),
                     VibrationEffect.DEFAULT_AMPLITUDE // FIXME
                 )
-            } else {
-                throw IllegalStateException()
-            }
-        }
 
-        override fun performVibration(vibrator: Vibrator) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(vibrationEffect)
             } else {
                 @Suppress("DEPRECATION")
