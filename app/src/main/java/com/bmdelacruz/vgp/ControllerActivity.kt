@@ -15,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
 import androidx.preference.PreferenceManager
 import com.bmdelacruz.vgp.ControllerEvent.Companion.makeEvent
-import com.bmdelacruz.vgp.databinding.ActivityFullscreenBinding
+import com.bmdelacruz.vgp.databinding.ActivityControllerBinding
 import com.google.android.material.snackbar.Snackbar
 import io.grpc.Deadline
 import io.grpc.ManagedChannelBuilder
@@ -63,7 +63,7 @@ class ControllerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        ActivityFullscreenBinding.inflate(layoutInflater).apply {
+        ActivityControllerBinding.inflate(layoutInflater).apply {
             lifecycleOwner = this@ControllerActivity
 
             this.vm = this@ControllerActivity.vm
