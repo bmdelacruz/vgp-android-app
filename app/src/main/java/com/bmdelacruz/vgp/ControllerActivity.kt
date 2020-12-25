@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit
 class ControllerActivity : AppCompatActivity() {
     private val systemUiVisibilityControlChannel = Channel<Boolean>()
     private val waitChannel = Channel<Unit>()
+    private val forceFeedbackMap = mutableMapOf<Int, ForceFeedback>()
 
     private val vm by viewModels<VM>()
 
@@ -242,6 +243,37 @@ class ControllerActivity : AppCompatActivity() {
 
     private val outputStreamObserver = object : StreamObserver<Gamepad.OutputData> {
         override fun onNext(value: Gamepad.OutputData?) {
+            when (value?.feedbackCase) {
+                Gamepad.OutputData.FeedbackCase.FF_UPLOADED -> {
+                    val forceFeedback: ForceFeedback? = when (value.ffUploaded.typeCase) {
+                        Gamepad.ForceFeedbackUploaded.TypeCase.RUMBLE -> {
+                            ForceFeedback.Rumble(
+                                value.ffUploaded.id,
+                                value.ffUploaded.replayDelay,
+                                value.ffUploaded.replayLength,
+                                value.ffUploaded.rumble.strongMagnitude,
+                                value.ffUploaded.rumble.weakMagnitude
+                            )
+                        }
+                        else -> null
+                    }
+                    if (forceFeedback != null) {
+                        forceFeedbackMap[forceFeedback.id] = forceFeedback
+                    }
+                }
+                Gamepad.OutputData.FeedbackCase.FF_ERASED -> {
+                    forceFeedbackMap.remove(value.ffErased.id)
+                }
+                Gamepad.OutputData.FeedbackCase.FF_PLAYED -> {
+                    forceFeedbackMap[value.ffPlayed.id]?.performVibration(vibrator)
+                }
+                Gamepad.OutputData.FeedbackCase.FF_STOPPED -> {
+                    // stopping the vibration is not really supported
+                }
+                else -> {
+                    // ignore
+                }
+            }
         }
 
         override fun onError(t: Throwable?) {
