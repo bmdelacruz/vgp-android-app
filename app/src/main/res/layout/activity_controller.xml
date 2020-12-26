@@ -90,7 +90,7 @@
                 android:layout_marginVertical="12dp"
                 android:columnCount="3"
                 android:rowCount="3"
-                app:layout_constraintBottom_toTopOf="@id/thumb_stick_left"
+                app:layout_constraintBottom_toTopOf="@id/container_thumb_stick_left"
                 app:layout_constraintEnd_toStartOf="@id/container_main_buttons"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/container_triggers_left">
@@ -133,16 +133,36 @@
 
             </GridLayout>
 
-            <com.bmdelacruz.vgp.ThumbStick
-                android:id="@+id/thumb_stick_left"
+            <View
+                android:id="@+id/container_thumb_stick_left"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                android:background="?selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_dpad_up"
+                android:background="@drawable/ic_thumbstick_bg"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="@id/container_dpad"
                 app:layout_constraintStart_toStartOf="@id/container_dpad"
                 app:layout_constraintTop_toBottomOf="@id/container_dpad" />
+
+            <com.bmdelacruz.vgp.Button
+                android:id="@+id/btn_thumb_stick_left"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="10dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_dpad_down"
+                app:layout_constraintStart_toEndOf="@id/container_thumb_stick_left"
+                app:layout_constraintTop_toTopOf="@id/container_thumb_stick_left"
+                app:layout_constraintBottom_toBottomOf="@id/container_thumb_stick_left" />
+
+            <com.bmdelacruz.vgp.ThumbStickHandle
+                android:id="@+id/handle_thumb_stick_left"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:background="@drawable/ic_thumbstick_fg"
+                app:layout_constraintStart_toStartOf="@id/container_thumb_stick_left"
+                app:layout_constraintEnd_toEndOf="@id/container_thumb_stick_left"
+                app:layout_constraintTop_toTopOf="@id/container_thumb_stick_left"
+                app:layout_constraintBottom_toBottomOf="@id/container_thumb_stick_left" />
 
             <LinearLayout
                 android:id="@+id/container_triggers_right"
@@ -176,7 +196,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginVertical="12dp"
-                app:layout_constraintBottom_toTopOf="@id/thumb_stick_right"
+                app:layout_constraintBottom_toTopOf="@id/container_thumb_stick_right"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/container_main_buttons"
                 app:layout_constraintTop_toBottomOf="@id/container_triggers_right">
@@ -219,16 +239,36 @@
 
             </GridLayout>
 
-            <com.bmdelacruz.vgp.ThumbStick
-                android:id="@+id/thumb_stick_right"
+            <View
+                android:id="@+id/container_thumb_stick_right"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                android:background="?selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_dpad_up"
+                android:background="@drawable/ic_thumbstick_bg"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="@id/container_buttons"
                 app:layout_constraintStart_toStartOf="@id/container_buttons"
                 app:layout_constraintTop_toBottomOf="@id/container_buttons" />
+
+            <com.bmdelacruz.vgp.Button
+                android:id="@+id/btn_thumb_stick_right"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="10dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_dpad_down"
+                app:layout_constraintEnd_toStartOf="@id/container_thumb_stick_right"
+                app:layout_constraintTop_toTopOf="@id/container_thumb_stick_right"
+                app:layout_constraintBottom_toBottomOf="@id/container_thumb_stick_right" />
+
+            <com.bmdelacruz.vgp.ThumbStickHandle
+                android:id="@+id/handle_thumb_stick_right"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:background="@drawable/ic_thumbstick_fg"
+                app:layout_constraintStart_toStartOf="@id/container_thumb_stick_right"
+                app:layout_constraintEnd_toEndOf="@id/container_thumb_stick_right"
+                app:layout_constraintTop_toTopOf="@id/container_thumb_stick_right"
+                app:layout_constraintBottom_toBottomOf="@id/container_thumb_stick_right" />
 
             <LinearLayout
                 android:id="@+id/container_main_buttons"

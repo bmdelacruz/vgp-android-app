@@ -90,10 +90,14 @@ class ControllerActivity : AppCompatActivity() {
                 createButtonStateChangedListener(ButtonType.TriggerR2)
             btnStart.onButtonStateChanged = createButtonStateChangedListener(ButtonType.Start)
             btnSelect.onButtonStateChanged = createButtonStateChangedListener(ButtonType.Select)
-            thumbStickLeft.onButtonStateChanged =
+            btnThumbStickLeft.onButtonStateChanged =
                 createButtonStateChangedListener(ButtonType.ThumbL)
-            thumbStickRight.onButtonStateChanged =
+            btnThumbStickRight.onButtonStateChanged =
                 createButtonStateChangedListener(ButtonType.ThumbR)
+            handleThumbStickLeft.onPositionChanged =
+                createThumbStickPositionChangedListener(ThumbStickType.Left)
+            handleThumbStickRight.onPositionChanged =
+                createThumbStickPositionChangedListener(ThumbStickType.Right)
         }
 
         @Suppress("DEPRECATION")
@@ -252,6 +256,21 @@ class ControllerActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun createThumbStickPositionChangedListener(type: ThumbStickType): (Float, Float) -> Unit =
+        { x, y ->
+            lifecycleScope.launchWhenStarted {
+                withContext(Dispatchers.IO) {
+                    inputStreamObserver?.onNext(
+                        ControllerEvent.ThumbStickPositionChanged(
+                            type,
+                            x,
+                            y
+                        ).toInput()
+                    )
+                }
+            }
+        }
 
     private fun connectToServer(targetAddress: String) {
         connectionJob = lifecycleScope.launchWhenCreated {
