@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_key_about">not_pref_about</string>
+    <string name="pref_key_help">not_pref_help</string>
+    <string name="pref_key_server_address">server_address</string>
+    <string name="pref_key_enable_sound_feedback">enable_sound_feedback</string>
+    <string name="pref_key_sound_feedback_volume">sound_feedback_volume</string>
+    <string name="pref_key_enable_haptic_feedback">enable_haptic_feedback</string>
+    <string name="pref_key_haptic_feedback_vibration_strength">haptic_feedback_vibration_strength</string>
+    <string name="pref_key_haptic_feedback_vibration_duration">haptic_feedback_vibration_duration</string>
+
+    <bool name="pref_default_enable_sound_feedback">true</bool>
+    <integer name="pref_default_sound_feedback_volume">8</integer>
+    <integer name="pref_min_sound_feedback_volume">1</integer>
+    <integer name="pref_max_sound_feedback_volume">100</integer>
+
+    <bool name="pref_default_enable_haptic_feedback">true</bool>
+    <integer name="pref_default_haptic_feedback_vibration_strength">20</integer>
+    <integer name="pref_min_haptic_feedback_vibration_strength">1</integer>
+    <integer name="pref_max_haptic_feedback_vibration_strength">255</integer>
+    <integer name="pref_default_haptic_feedback_vibration_duration">35</integer>
+    <integer name="pref_min_haptic_feedback_vibration_duration">1</integer>
+    <integer name="pref_max_haptic_feedback_vibration_duration">300</integer>
+</resources>

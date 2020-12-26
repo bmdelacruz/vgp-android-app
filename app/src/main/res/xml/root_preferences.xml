@@ -1,0 +1,88 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="@string/lbl_pref_title_cat_app_info"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            app:title="@string/lbl_pref_title_app_version"
+            app:summary="0.1.0"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            app:key="@string/pref_key_about"
+            app:title="@string/lbl_pref_title_app_about"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            app:key="@string/pref_key_help"
+            app:title="@string/lbl_pref_title_app_help"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="@string/lbl_pref_title_cat_server_settings"
+        app:iconSpaceReserved="false">
+
+        <EditTextPreference
+            app:key="@string/pref_key_server_address"
+            app:title="@string/lbl_pref_title_server_address"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false"
+            app:dialogMessage="@string/lbl_pref_summary_server_address" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="@string/lbl_pref_title_cat_vgp_settings"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            app:key="@string/pref_key_enable_sound_feedback"
+            app:title="@string/lbl_pref_title_enable_sound_feedback"
+            app:summary="@string/lbl_pref_summary_enable_sound_feedback"
+            app:iconSpaceReserved="false"
+            app:defaultValue="@bool/pref_default_enable_haptic_feedback" />
+
+        <SeekBarPreference
+            app:key="@string/pref_key_sound_feedback_volume"
+            app:title="@string/lbl_pref_title_sound_feedback_volume"
+            app:summary="@string/lbl_pref_summary_sound_feedback_volume"
+            app:dependency="@string/pref_key_enable_sound_feedback"
+            app:iconSpaceReserved="false"
+            app:showSeekBarValue="true"
+            android:defaultValue="@integer/pref_default_sound_feedback_volume"
+            android:max="@integer/pref_max_sound_feedback_volume" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/pref_key_enable_haptic_feedback"
+            app:title="@string/lbl_pref_title_enable_haptic_feedback"
+            app:summary="@string/lbl_pref_summary_enable_haptic_feedback"
+            app:iconSpaceReserved="false"
+            app:defaultValue="@bool/pref_default_enable_haptic_feedback" />
+
+        <SeekBarPreference
+            app:key="@string/pref_key_haptic_feedback_vibration_strength"
+            app:title="@string/lbl_pref_title_haptic_feedback_vibration_strength"
+            app:summary="@string/lbl_pref_summary_haptic_feedback_vibration_strength"
+            app:dependency="@string/pref_key_enable_haptic_feedback"
+            app:iconSpaceReserved="false"
+            app:showSeekBarValue="true"
+            android:defaultValue="@integer/pref_default_haptic_feedback_vibration_strength"
+            android:max="@integer/pref_max_haptic_feedback_vibration_strength" />
+
+        <SeekBarPreference
+            app:key="@string/pref_key_haptic_feedback_vibration_duration"
+            app:title="@string/lbl_pref_title_haptic_feedback_vibration_duration"
+            app:summary="@string/lbl_pref_summary_haptic_feedback_vibration_duration"
+            app:dependency="@string/pref_key_enable_haptic_feedback"
+            app:iconSpaceReserved="false"
+            app:showSeekBarValue="true"
+            android:defaultValue="@integer/pref_default_haptic_feedback_vibration_duration"
+            android:max="@integer/pref_max_haptic_feedback_vibration_duration" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
