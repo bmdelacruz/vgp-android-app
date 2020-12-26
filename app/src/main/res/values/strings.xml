@@ -25,6 +25,7 @@
     <string name="lbl_pref_title_app_version">Version</string>
     <string name="lbl_pref_title_app_about">About</string>
     <string name="lbl_pref_title_app_help">Help</string>
+    <string name="lbl_pref_title_app_theme_mode">Theme</string>
 
     <string name="lbl_pref_title_cat_server_settings">Server Settings</string>
     <string name="lbl_pref_title_server_address">Server Address</string>

@@ -4,8 +4,10 @@ import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.util.PatternsCompat
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 
@@ -55,6 +57,28 @@ class SettingsActivity : AppCompatActivity() {
                     }
 
                     isValid
+                }
+
+            preferenceScreen
+                .findPreference<ListPreference>(getString(R.string.pref_key_theme_mode))!!
+                .setOnPreferenceChangeListener { _, newValue ->
+                    newValue as String?
+
+                    when (newValue) {
+                        getString(R.string.theme_mode_light) -> {
+                            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                        }
+                        getString(R.string.theme_mode_dark) -> {
+                            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                        }
+                        getString(R.string.theme_mode_system) -> {
+                            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                        }
+                        else -> {
+                        }
+                    }
+
+                    true
                 }
         }
 

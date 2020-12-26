@@ -22,6 +22,15 @@
 
     </PreferenceCategory>
 
+    <ListPreference
+        app:key="@string/pref_key_theme_mode"
+        app:title="@string/lbl_pref_title_app_theme_mode"
+        app:useSimpleSummaryProvider="true"
+        app:iconSpaceReserved="false"
+        app:defaultValue="@string/theme_mode_system"
+        app:entries="@array/theme_mode_names"
+        app:entryValues="@array/theme_modes" />
+
     <PreferenceCategory
         app:title="@string/lbl_pref_title_cat_server_settings"
         app:iconSpaceReserved="false">

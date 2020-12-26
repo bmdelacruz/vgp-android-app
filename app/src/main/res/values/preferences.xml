@@ -2,12 +2,29 @@
 <resources>
     <string name="pref_key_about">not_pref_about</string>
     <string name="pref_key_help">not_pref_help</string>
+    <string name="pref_key_theme_mode">theme_mode</string>
     <string name="pref_key_server_address">server_address</string>
     <string name="pref_key_enable_sound_feedback">enable_sound_feedback</string>
     <string name="pref_key_sound_feedback_volume">sound_feedback_volume</string>
     <string name="pref_key_enable_haptic_feedback">enable_haptic_feedback</string>
     <string name="pref_key_haptic_feedback_vibration_strength">haptic_feedback_vibration_strength</string>
     <string name="pref_key_haptic_feedback_vibration_duration">haptic_feedback_vibration_duration</string>
+
+    <string-array name="theme_mode_names">
+        <item>Light</item>
+        <item>Dark</item>
+        <item>Use system theme</item>
+    </string-array>
+
+    <string name="theme_mode_light">light</string>
+    <string name="theme_mode_dark">dark</string>
+    <string name="theme_mode_system">system</string>
+
+    <string-array name="theme_modes">
+        <item>@string/theme_mode_light</item>
+        <item>@string/theme_mode_dark</item>
+        <item>@string/theme_mode_system</item>
+    </string-array>
 
     <bool name="pref_default_enable_sound_feedback">true</bool>
     <integer name="pref_default_sound_feedback_volume">8</integer>
