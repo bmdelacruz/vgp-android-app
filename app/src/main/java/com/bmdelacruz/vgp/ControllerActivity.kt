@@ -19,6 +19,7 @@ import com.bmdelacruz.vgp.databinding.ActivityControllerBinding
 import com.google.android.material.snackbar.Snackbar
 import io.grpc.Deadline
 import io.grpc.ManagedChannelBuilder
+import io.grpc.stub.ClientCallStreamObserver
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -27,7 +28,6 @@ import java.util.concurrent.TimeUnit
 
 class ControllerActivity : AppCompatActivity() {
     private val systemUiVisibilityControlChannel = Channel<Boolean>()
-    private val waitChannel = Channel<Unit>()
     private val forceFeedbackMap = mutableMapOf<Int, ForceFeedback>()
 
     private val vm by viewModels<VM>()
@@ -55,8 +55,9 @@ class ControllerActivity : AppCompatActivity() {
     private var releaseSoundId = -1
     private var pressStreamId = -1
     private var releaseStreamId = -1
+    private var waitChannel: Channel<Unit>? = null
     private var connectionJob: Job? = null
-    private var inputStreamObserver: StreamObserver<Gamepad.InputData>? = null
+    private var inputStreamObserver: ClientCallStreamObserver<Gamepad.InputData>? = null
 
     @FlowPreview
     @ExperimentalCoroutinesApi
@@ -96,8 +97,12 @@ class ControllerActivity : AppCompatActivity() {
                 createButtonStateChangedListener(ButtonType.ThumbR)
             handleThumbStickLeft.onPositionChanged =
                 createThumbStickPositionChangedListener(ThumbStickType.Left)
+            handleThumbStickLeft.onPositionReset =
+                createThumbStickPositionResetListener(ThumbStickType.Left)
             handleThumbStickRight.onPositionChanged =
                 createThumbStickPositionChangedListener(ThumbStickType.Right)
+            handleThumbStickRight.onPositionReset =
+                createThumbStickPositionResetListener(ThumbStickType.Right)
         }
 
         @Suppress("DEPRECATION")
@@ -249,28 +254,36 @@ class ControllerActivity : AppCompatActivity() {
                 }
             }
 
-            lifecycleScope.launchWhenStarted {
-                withContext(Dispatchers.IO) {
-                    inputStreamObserver?.onNext(it.makeEvent(buttonType).toInput())
-                }
+            inputStreamObserver?.onNext(it.makeEvent(buttonType).toInput())
+        }
+    }
+
+    private fun createThumbStickPositionChangedListener(type: ThumbStickType): (Float, Float) -> Unit {
+        var previousTimeMillis = -1L
+        return { x, y ->
+            val currentTimeMillis = System.currentTimeMillis()
+            if (previousTimeMillis == -1L || currentTimeMillis >= previousTimeMillis + 5) {
+                previousTimeMillis = currentTimeMillis
+
+                inputStreamObserver?.onNext(
+                    ControllerEvent.ThumbStickPositionChanged(
+                        type,
+                        x,
+                        y
+                    ).toInput()
+                )
             }
         }
     }
 
-    private fun createThumbStickPositionChangedListener(type: ThumbStickType): (Float, Float) -> Unit =
-        { x, y ->
-            lifecycleScope.launchWhenStarted {
-                withContext(Dispatchers.IO) {
-                    inputStreamObserver?.onNext(
-                        ControllerEvent.ThumbStickPositionChanged(
-                            type,
-                            x,
-                            y
-                        ).toInput()
-                    )
-                }
-            }
-        }
+    private fun createThumbStickPositionResetListener(type: ThumbStickType): () -> Unit = {
+        inputStreamObserver?.onNext(
+            ControllerEvent.ThumbStickPositionChanged(
+                type,
+                0.0f, 0.0f
+            ).toInput()
+        )
+    }
 
     private fun connectToServer(targetAddress: String) {
         connectionJob = lifecycleScope.launchWhenCreated {
@@ -289,13 +302,19 @@ class ControllerActivity : AppCompatActivity() {
                             .check(Gamepad.CheckRequest.getDefaultInstance())
 
                         inputStreamObserver = GamePadGrpc.newStub(grpcChannel)
-                            .instantiate(outputStreamObserver)
+                            .instantiate(outputStreamObserver) as ClientCallStreamObserver<Gamepad.InputData>
                     }
                 }
 
+                waitChannel = Channel()
+
                 vm.state.value = State.Connected
 
-                waitChannel.receive()
+                withContext(Dispatchers.IO) {
+                    waitChannel!!.receive()
+                }
+
+                inputStreamObserver!!.cancel("Client wanted to disconnect.", null)
             } catch (_: CancellationException) {
             } catch (_: Exception) {
                 Snackbar
@@ -311,9 +330,10 @@ class ControllerActivity : AppCompatActivity() {
                     vm.state.value = State.NotConnected
 
                     connectionJob = null
+                    waitChannel = null
                     inputStreamObserver = null
 
-                    grpcChannel.shutdown()
+                    grpcChannel.shutdownNow()
                 }
             }
         }
@@ -355,11 +375,11 @@ class ControllerActivity : AppCompatActivity() {
         }
 
         override fun onError(t: Throwable?) {
-            waitChannel.sendBlocking(Unit)
+            waitChannel?.cancel()
         }
 
         override fun onCompleted() {
-            waitChannel.sendBlocking(Unit)
+            waitChannel?.cancel()
         }
     }
 
@@ -395,8 +415,7 @@ class ControllerActivity : AppCompatActivity() {
         }
 
         override fun disconnect() {
-            inputStreamObserver?.onCompleted()
-            waitChannel.sendBlocking(Unit)
+            waitChannel?.sendBlocking(Unit)
         }
 
         override fun showSystemUi() {

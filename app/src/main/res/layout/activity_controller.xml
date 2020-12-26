@@ -381,6 +381,13 @@
                 app:layout_constraintTop_toBottomOf="@id/container_misc_buttons"
                 app:layout_constraintVertical_bias="1">
 
+                <ProgressBar
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_margin="10dp"
+                    android:visibility="@{vm.state == State.Connecting ? View.VISIBLE : View.GONE}"
+                    tools:visibility="gone" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -406,13 +413,6 @@
                     android:layout_height="wrap_content"
                     android:text="@{vm.targetAddress == null || vm.targetAddress == `` ? @string/lbl_server_address_not_set : vm.targetAddress}"
                     tools:text="@string/lbl_server_address_not_set" />
-
-                <ProgressBar
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_margin="10dp"
-                    android:visibility="@{vm.state == State.Connecting ? View.VISIBLE : View.GONE}"
-                    tools:visibility="gone" />
 
             </LinearLayout>
 

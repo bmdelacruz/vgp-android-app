@@ -5,7 +5,9 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import kotlin.math.*
+import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class ThumbStickHandle(
     context: Context,
@@ -15,8 +17,10 @@ class ThumbStickHandle(
 ) : FrameLayout(context, attrs, defStyleAttr, defStyleRes), View.OnTouchListener {
     private var previousX = 0f
     private var previousY = 0f
+    private var previousDistanceSquared = 0f
 
     lateinit var onPositionChanged: (x: Float, y: Float) -> Unit
+    lateinit var onPositionReset: () -> Unit
 
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : this(
         context,
@@ -39,15 +43,13 @@ class ThumbStickHandle(
                 previousX = event.rawX
                 previousY = event.rawY
 
-                onPositionChanged(0f, 0f)
-
                 true
             }
             MotionEvent.ACTION_UP -> {
                 translationX = 0f
                 translationY = 0f
 
-                onPositionChanged(0f, 0f)
+                onPositionReset()
 
                 invalidate()
 
@@ -61,20 +63,25 @@ class ThumbStickHandle(
                 var newTy = translationY + dy
 
                 val distanceSquared = newTx * newTx + newTy * newTy
-                if (distanceSquared >= MAX_DISTANCE_SQUARED) {
-                    val magnitude = sqrt(distanceSquared)
-                    val utx = newTx / magnitude
-                    val uty = newTy / magnitude
+                val distanceSquaredDx = distanceSquared.minus(previousDistanceSquared).absoluteValue
+                if (distanceSquaredDx >= DISTANCE_THRESHOLD_SQUARED) {
+                    previousDistanceSquared = distanceSquared
 
-                    newTx = utx * MAX_DISTANCE
-                    newTy = uty * MAX_DISTANCE
+                    if (distanceSquared >= MAX_DISTANCE_SQUARED) {
+                        val magnitude = sqrt(distanceSquared)
+                        val utx = newTx / magnitude
+                        val uty = newTy / magnitude
 
-                    onPositionChanged(utx, uty)
-                } else {
-                    val utx = newTx / MAX_DISTANCE
-                    val uty = newTy / MAX_DISTANCE
+                        newTx = utx * MAX_DISTANCE
+                        newTy = uty * MAX_DISTANCE
 
-                    onPositionChanged(utx, uty)
+                        onPositionChanged(utx, uty)
+                    } else {
+                        val utx = newTx / MAX_DISTANCE
+                        val uty = newTy / MAX_DISTANCE
+
+                        onPositionChanged(utx, uty)
+                    }
                 }
 
                 previousX = event.rawX
@@ -93,5 +100,6 @@ class ThumbStickHandle(
     companion object {
         private const val MAX_DISTANCE = 60f
         private val MAX_DISTANCE_SQUARED = MAX_DISTANCE.pow(2)
+        private val DISTANCE_THRESHOLD_SQUARED = 5f.pow(2)
     }
 }
