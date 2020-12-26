@@ -366,7 +366,7 @@ class ControllerActivity : AppCompatActivity() {
                     forceFeedbackMap[value.ffPlayed.id]?.performVibration(vibrator)
                 }
                 Gamepad.OutputData.FeedbackCase.FF_STOPPED -> {
-                    // stopping the vibration is not really supported
+                    forceFeedbackMap[value.ffPlayed.id]?.cancelVibration(vibrator)
                 }
                 else -> {
                     // ignore

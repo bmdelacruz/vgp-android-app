@@ -10,6 +10,7 @@ sealed class ForceFeedback {
     abstract val replayLength: Int
 
     abstract fun performVibration(vibrator: Vibrator)
+    abstract fun cancelVibration(vibrator: Vibrator)
 
     class Rumble(
         override val id: Int,
@@ -30,6 +31,10 @@ sealed class ForceFeedback {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(replayLength.toLong())
             }
+        }
+
+        override fun cancelVibration(vibrator: Vibrator) {
+            vibrator.cancel()
         }
     }
 }
